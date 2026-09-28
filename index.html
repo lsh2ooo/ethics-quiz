@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>도덕·윤리 임용고시 원전 빈칸 퀴즈 센터</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .blank-input {
+      border-bottom: 2px solid #6366f1;
+      outline: none;
+      text-align: center;
+      font-weight: 600;
+      color: #1e1b4b;
+      padding: 2px 6px;
+      margin: 0 4px;
+      min-width: 90px;
+      background-color: #f5f3ff;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+    .blank-input:focus {
+      border-bottom-color: #4338ca;
+      background-color: #ede9fe;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+    .blank-correct {
+      border-bottom-color: #10b981 !important;
+      background-color: #ecfdf5 !important;
+      color: #065f46 !important;
+    }
+    .blank-incorrect {
+      border-bottom-color: #ef4444 !important;
+      background-color: #fef2f2 !important;
+      color: #991b1b !important;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+  <!-- 상단 네비게이션 -->
+  <header class="bg-indigo-900 text-white shadow-md">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-2">
+      <div>
+        <h1 class="text-xl font-bold tracking-tight">전공윤리 원전 빈칸 메이커</h1>
+        <p class="text-xs text-indigo-200 mt-0.5">기출 원전 기입형 자동 채점 & 복습 시스템</p>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="switchTab('quiz')" id="tab-quiz-btn" class="px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-700 hover:bg-indigo-600 transition">
+          문제 풀기 (<span id="total-count">0</span>)
+        </button>
+        <button onclick="switchTab('manage')" id="tab-manage-btn" class="px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-950 hover:bg-indigo-800 transition">
+          + 문제 추가 / 관리
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto p-4 sm:p-6">
+    <!-- 탭 1: 문제 등록 및 관리 -->
+    <section id="manage-view" class="hidden space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <h2 class="text-lg font-bold text-slate-900 mb-2">채팅 텍스트 그대로 붙여넣기</h2>
+        <p class="text-sm text-slate-500 mb-4">
+          튜터 채팅에서 제공된 <code class="text-indigo-600 font-semibold">5. 📖 [원문 빈칸 뚫기]</code> 영역 전체를 복사하여 아래에 붙여넣고 [문제 생성하기]를 누르면 자동으로 파싱되어 문제가 등록됩니다.
+        </p>
+
+        <textarea id="raw-input" rows="10" class="w-full border border-slate-300 rounded-lg p-3.5 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="[원문 1] 『윤리형이상학 정초』 제2절
+&quot;목적들의 왕국에서 모든 것은 가격을 갖거나 존엄성을 갖는다. ... [  ①  ]을/를 갖는다.&quot;
+
+정답 확인:
+①: 존엄성 (Würde)
+②: 인간성 (Menschheit)"></textarea>
+
+        <div class="mt-4 flex flex-wrap justify-between items-center gap-2">
+          <button onclick="parseAndSave()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm px-6 py-2.5 rounded-lg shadow-sm transition">
+            문제 자동 파싱 및 등록
+          </button>
+          <button onclick="loadSampleData()" class="text-sm text-indigo-600 hover:underline">
+            예시 샘플 데이터 불러오기
+          </button>
+        </div>
+      </div>
+
+      <!-- 등록된 문제 리스트 -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-bold text-slate-900">저장된 원문 목록</h3>
+          <button onclick="clearAllQuestions()" class="text-xs text-red-500 hover:text-red-700">전체 삭제</button>
+        </div>
+        <div id="stored-list" class="divide-y divide-slate-100 text-sm"></div>
+      </div>
+    </section>
+
+    <!-- 탭 2: 퀴즈 풀기 -->
+    <section id="quiz-view" class="space-y-6">
+      <div class="flex flex-wrap justify-between items-center gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-medium text-slate-600">진행도:</span>
+          <span id="quiz-progress" class="font-bold text-indigo-600">0 / 0</span>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="checkAllAnswers()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
+            정답 확인
+          </button>
+          <button onclick="resetInputs()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold transition">
+            다시 풀기
+          </button>
+        </div>
+      </div>
+
+      <div id="quiz-container" class="space-y-6">
+        <!-- 퀴즈 카드가 렌더링되는 영역 -->
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let questions = JSON.parse(localStorage.getItem('ethics_quiz_db') || '[]');
+
+    function saveToStorage() {
+      localStorage.setItem('ethics_quiz_db', JSON.stringify(questions));
+      updateUI();
+    }
+
+    function switchTab(tab) {
+      const qView = document.getElementById('quiz-view');
+      const mView = document.getElementById('manage-view');
+      const qBtn = document.getElementById('tab-quiz-btn');
+      const mBtn = document.getElementById('tab-manage-btn');
+
+      if (tab === 'quiz') {
+        qView.classList.remove('hidden');
+        mView.classList.add('hidden');
+        qBtn.className = "px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-700 hover:bg-indigo-600 transition";
+        mBtn.className = "px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-950 hover:bg-indigo-800 transition";
+        renderQuiz();
+      } else {
+        qView.classList.add('hidden');
+        mView.classList.remove('hidden');
+        mBtn.className = "px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-700 hover:bg-indigo-600 transition";
+        qBtn.className = "px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-950 hover:bg-indigo-800 transition";
+        renderStoredList();
+      }
+    }
+
+    // 텍스트 스마트 파서 함수
+    function parseAndSave() {
+      const text = document.getElementById('raw-input').value.trim();
+      if (!text) {
+        alert('내용을 입력해 주세요.');
+        return;
+      }
+
+      // 정답 영역 분리 (정답 확인: 또는 정답: 기준)
+      const splitRegex = /(?:정답\s*확인\s*:?|정답\s*:)/i;
+      const parts = text.split(splitRegex);
+      if (parts.length < 2) {
+        alert('원문과 하단의 [정답 확인] 영역을 함께 복사해 넣어주세요.');
+        return;
+      }
+
+      const bodyText = parts[0].trim();
+      const answerText = parts[1].trim();
+
+      // 정답 매핑 파싱 (예: ①: 존엄성 (Würde) / 1. 존엄성 / ㉠: 존엄성)
+      const answers = {};
+      const answerLines = answerText.split('\n');
+      const ansRegex = /([①-⑩0-9가-힣ㄱ-ㅎa-zA-Z㉠-㉭]+)\s*[:.]\s*(.+)/;
+
+      answerLines.forEach(line => {
+        const match = line.trim().match(ansRegex);
+        if (match) {
+          const key = match[1].trim();
+          let rawAns = match[2].trim();
+          // 괄호 앞의 핵심 단어만 기본 정답으로 추출 (원어 병기 허용 처리)
+          const cleanAns = rawAns.split(/[\(\[\{]/)[0].trim();
+          answers[key] = {
+            display: rawAns,
+            clean: cleanAns.toLowerCase()
+          };
+        }
+      });
+
+      if (Object.keys(answers).length === 0) {
+        alert('정답 목록을 인식할 수 없습니다. 형식을 확인해 주세요.');
+        return;
+      }
+
+      const newQuestion = {
+        id: Date.now(),
+        date: new Date().toLocaleDateString('ko-KR'),
+        body: bodyText,
+        answers: answers
+      };
+
+      questions.unshift(newQuestion);
+      saveToStorage();
+      document.getElementById('raw-input').value = '';
+      alert('성공적으로 등록되었습니다!');
+      switchTab('quiz');
+    }
+
+    function renderQuiz() {
+      const container = document.getElementById('quiz-container');
+      const progress = document.getElementById('quiz-progress');
+      container.innerHTML = '';
+      progress.innerText = `0 / ${questions.length} 세트 완료`;
+
+      if (questions.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-16 bg-white rounded-xl border border-slate-200">
+            <p class="text-slate-500 mb-2">등록된 원전 빈칸 문제가 없습니다.</p>
+            <button onclick="switchTab('manage')" class="text-sm font-semibold text-indigo-600 hover:underline">
+              첫 번째 문제 등록하러 가기 &rarr;
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      questions.forEach((q, qIdx) => {
+        let contentHtml = q.body;
+
+        // 원문 내의 빈칸 [ ① ], [ 1 ], [ ㉠ ] 등을 입력창으로 치환
+        const blankRegex = /\[\s*([①-⑩0-9가-힣ㄱ-ㅎa-zA-Z㉠-㉭]+)\s*\]/g;
+        contentHtml = contentHtml.replace(blankRegex, (match, p1) => {
+          const key = p1.trim();
+          return `<input type="text" data-qid="${q.id}" data-key="${key}" class="blank-input" placeholder="[ ${key} ]" autocomplete="off" />`;
+        });
+
+        // 줄바꿈 보존
+        contentHtml = contentHtml.replace(/\n/g, '<br/>');
+
+        const card = document.createElement('div');
+        card.className = "bg-white p-6 rounded-xl border border-slate-200 shadow-sm leading-relaxed";
+        card.innerHTML = `
+          <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-100">
+            <span class="text-xs font-semibold px-2 py-1 bg-indigo-50 text-indigo-700 rounded-md">문항 #${questions.length - qIdx}</span>
+            <span class="text-xs text-slate-400">${q.date}</span>
+          </div>
+          <div class="text-slate-800 text-sm md:text-base leading-loose font-normal">
+            ${contentHtml}
+          </div>
+          <div id="feedback-${q.id}" class="mt-4 hidden p-3 rounded-lg text-sm bg-slate-50 border border-slate-200"></div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function checkAllAnswers() {
+      let totalBlanks = 0;
+      let correctBlanks = 0;
+
+      questions.forEach(q => {
+        const inputs = document.querySelectorAll(`input[data-qid="${q.id}"]`);
+        const feedbackDiv = document.getElementById(`feedback-${q.id}`);
+        let feedbackHtml = '<ul class="space-y-1">';
+
+        inputs.forEach(input => {
+          totalBlanks++;
+          const userVal = input.value.trim().toLowerCase();
+          const targetKey = input.dataset.key;
+          const targetAnswerObj = q.answers[targetKey];
+
+          if (!targetAnswerObj) return;
+
+          const isCorrect = userVal && (userVal === targetAnswerObj.clean || userVal === targetAnswerObj.display.toLowerCase());
+
+          if (isCorrect) {
+            correctBlanks++;
+            input.classList.remove('blank-incorrect');
+            input.classList.add('blank-correct');
+          } else {
+            input.classList.remove('blank-correct');
+            input.classList.add('blank-incorrect');
+          }
+
+          feedbackHtml += `<li><strong>${targetKey}</strong>: ${targetAnswerObj.display} ${isCorrect ? '<span class="text-emerald-600 font-bold">✓ 정답</span>' : '<span class="text-rose-600 font-bold">✗ 오답</span> (작성: ' + (userVal || '미작성') + ')'}</li>`;
+        });
+
+        feedbackHtml += '</ul>';
+        feedbackDiv.innerHTML = feedbackHtml;
+        feedbackDiv.classList.remove('hidden');
+      });
+
+      document.getElementById('quiz-progress').innerText = `총 ${totalBlanks}개 중 ${correctBlanks}개 정답 (${Math.round((correctBlanks / (totalBlanks || 1)) * 100)}%)`;
+    }
+
+    function resetInputs() {
+      document.querySelectorAll('.blank-input').forEach(input => {
+        input.value = '';
+        input.classList.remove('blank-correct', 'blank-incorrect');
+      });
+      document.querySelectorAll('[id^="feedback-"]').forEach(div => div.classList.add('hidden'));
+      document.getElementById('quiz-progress').innerText = `0 / ${questions.length} 세트 완료`;
+    }
+
+    function renderStoredList() {
+      const container = document.getElementById('stored-list');
+      container.innerHTML = '';
+      if (questions.length === 0) {
+        container.innerHTML = '<p class="text-slate-400 py-3">등록된 문제가 없습니다.</p>';
+        return;
+      }
+      questions.forEach((q, idx) => {
+        const item = document.createElement('div');
+        item.className = "py-3 flex justify-between items-center gap-4";
+        item.innerHTML = `
+          <div class="truncate max-w-lg">
+            <p class="font-medium text-slate-800 truncate">${q.body.split('\n')[0].replace(/<[^>]*>?/gm, '')}</p>
+            <span class="text-xs text-slate-400">${q.date} · 빈칸 ${Object.keys(q.answers).length}개</span>
+          </div>
+          <button onclick="deleteQuestion(${q.id})" class="text-xs text-rose-500 hover:text-rose-700 whitespace-nowrap">삭제</button>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function deleteQuestion(id) {
+      if (confirm('이 문제를 삭제하시겠습니까?')) {
+        questions = questions.filter(q => q.id !== id);
+        saveToStorage();
+        renderStoredList();
+      }
+    }
+
+    function clearAllQuestions() {
+      if (confirm('모든 문제를 삭제하시겠습니까? 복구할 수 없습니다.')) {
+        questions = [];
+        saveToStorage();
+        renderStoredList();
+      }
+    }
+
+    function loadSampleData() {
+      const sample = `[원문 1] 『윤리형이상학 정초』 제2절
+"목적들의 왕국에서 모든 것은 가격을 갖거나 존엄성을 갖는다. 가격을 갖는 것은 동등한 다른 어떤 것으로 대체될 수 있다. 반면에 모든 가격을 넘어서 있어 어떤 대체물도 허용하지 않는 것은 [  ①  ]을/를 갖는다. … 도덕성은 그것 아래에서만 이성적 존재자가 목적 그 자체가 될 수 있는 조건이다. 따라서 도덕성과 도덕성을 감당할 수 있는 한에서의 [  ②  ]만이 [  ①  ]을/를 갖는다."
+
+[원문 2] 『윤리형이상학 정초』 제2절
+"의지의 임의적 사용을 위한 한낱 수단으로서 실존하는 것이 아니라, 그 행위가 자기 자신을 향하든 다른 이성적 존재자를 향하든 언제나 동시에 목적 그 자체로 실존한다. … 모든 가치를 규정하는 법칙 수립자 자신은 바로 그 때문에 무조건적이고 비교될 수 없는 가치를 가져야만 한다. 오직 [  ③  ]이라는 단어만이 법칙 자체와 그 법칙을 수립하는 이성적 존재자에 대해 내려야 하는 평가를 알맞게 나타낸다."
+
+정답 확인:
+①: 존엄성 (Würde)
+②: 인간성 (Menschheit)
+③: 존경 (Achtung)`;
+
+      document.getElementById('raw-input').value = sample;
+    }
+
+    function updateUI() {
+      document.getElementById('total-count').innerText = questions.length;
+    }
+
+    // 초기화
+    updateUI();
+    switchTab('quiz');
+  </script>
+</body>
+</html>
